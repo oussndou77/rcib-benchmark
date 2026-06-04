@@ -1,0 +1,17 @@
+# Secrets — NE JAMAIS committer
+setenv.sh
+.env
+*.key
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Résultats lourds / locaux (optionnel)
+results/*.json
+
+# OS
+.DS_Store
+Thumbs.db
