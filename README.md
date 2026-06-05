@@ -72,14 +72,16 @@ rcib/
 ├── scenario.py         # définition reproductible d'un scénario (pur Python)
 ├── kinematic_runner.py # exécuteur cinématique pur Python (testable sans GPU)
 ├── scenario_bridge.py  # exécuteur CARLA réel (sur pod)
-├── ego_controller.py   # cruise control de l'ego (base du planner Phase 3)
+├── ego_controller.py   # cruise control de l'ego (vitesse cible -> throttle/brake)
+├── ego_planner.py      # PHASE 3 : planner réactif (intention + risque -> vitesse cible)
 ├── intention/
 │   ├── base.py         # interface stable IntentionPredictor
 │   └── heuristic.py    # baseline V0 (pure Python)
 └── run_logger.py       # sauvegarde + leaderboard (reproductibilité)
 tests/
 ├── test_metrics.py     # validation du harness (Phase 1)
-└── test_scenario.py    # validation scénario + runner (Phase 2)
+├── test_scenario.py    # validation scénario + runner (Phase 2)
+└── test_planner.py     # validation closed-loop réactif (Phase 3)
 runners/                # smoke test CARLA + setup RunPod (Phase 0)
 docs/PLAN.md            # plan complet + pièges anticipés
 ```
