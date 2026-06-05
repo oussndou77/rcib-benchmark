@@ -31,7 +31,7 @@ RMSE 1.0 vs mAP 0.28 ne se comparent pas) en ramenant tout sur une échelle de c
 - [x] **Phase 1 — Metrics Harness** : cœur scientifique, pur Python, testé. Tourne sans GPU.
 - [x] **Phase 0 — smoke test CARLA sur RunPod** : VALIDÉ sur RTX 3090 (client 0.9.15 ↔ serveur 0.9.15, connexion RPC OK). Setup automatisé : `runners/setup_runpod.sh`. Voir `runners/RUNPOD_GUIDE.md`.
 - [x] **Phase 2 — Scenario Bridge** : `scenario.py` (specs reproductibles), `kinematic_runner.py` (exécuteur pur Python testable sans GPU), `scenario_bridge.py` (exécuteur CARLA). 11 tests. La logique réactive est déjà validable à froid via le KinematicRunner.
-- [ ] Phase 3 — Ego Planner réactif + boucle closed-loop
+- [x] **Phase 3 — Ego Planner réactif (closed-loop)** : `ego_planner.py` combine intention prédite + risque cinématique (distance d'arrêt) pour décider la vitesse cible, avec anticipation douce + filet de sécurité (AEB). 10 tests. Validé à froid : passif 0/12 buts & 12/12 collisions (RCIB 0.20) vs réactif prudent 12/12 buts & 0/12 collisions (RCIB 0.88). RCIB classe aussi les politiques de conduite (prudent 0.88 > équilibré 0.58 > agressif 0.06).
 - [ ] Phase 4 — Intention Adapter en service (PIEPredict / Trajectron++ isolés)
 - [ ] Phase 5 — Batch runner + leaderboard multi-modèles
 
