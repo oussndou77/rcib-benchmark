@@ -28,8 +28,8 @@ RMSE 1.0 vs mAP 0.28 ne se comparent pas) en ramenant tout sur une échelle de c
 
 ## Statut (construction par phases)
 
-- [x] **Phase 1 — Metrics Harness** (ce commit) : cœur scientifique, pur Python, testé. Tourne sans GPU.
-- [ ] Phase 0 — Dockerfile RunPod + smoke test CARLA
+- [x] **Phase 1 — Metrics Harness** : cœur scientifique, pur Python, testé. Tourne sans GPU.
+- [x] **Phase 0 — smoke test CARLA sur RunPod** : VALIDÉ sur RTX 3090 (client 0.9.15 ↔ serveur 0.9.15, connexion RPC OK). Setup automatisé : `runners/setup_runpod.sh`. Voir `runners/RUNPOD_GUIDE.md`.
 - [ ] Phase 2 — Scenario Bridge (spawn piétons + ego dans CARLA)
 - [ ] Phase 3 — Ego Planner réactif + boucle closed-loop
 - [ ] Phase 4 — Intention Adapter en service (PIEPredict / Trajectron++ isolés)

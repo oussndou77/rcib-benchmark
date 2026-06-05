@@ -34,12 +34,14 @@ def main():
     # ── 0. Import du package carla ──
     try:
         import carla
-    except ImportError:
-        print("✗ ÉCHEC : le package Python 'carla' n'est pas importable.")
-        print("  → Installe le wheel DEPUIS l'image (garantit la correspondance de version) :")
-        print("    pip install /home/carla/PythonAPI/carla/dist/carla-0.9.15-*.whl")
+    except ImportError as e:
+        print(f"✗ ÉCHEC : le package Python 'carla' n'est pas importable ({e}).")
+        print("  → As-tu lancé le setup et chargé l'environnement ?")
+        print("      bash setup_runpod.sh && source ~/rcib_env.sh")
+        print("  → Si une lib système manque (libXXX.so), télécharge-la sans root :")
+        print("      cd ~/debs && apt-get download <paquet> && dpkg -x <deb> ~/locallibs")
         return 1
-    print(f"✓ package carla importé (version client : {getattr(carla, '__version__', '?')})")
+    print("✓ package carla importé.")
 
     # ── 1. Connexion ──
     print(f"\n[1/4] Connexion à {args.host}:{args.port} (timeout {args.timeout}s)...")

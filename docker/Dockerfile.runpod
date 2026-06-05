@@ -1,39 +1,39 @@
-# Dockerfile.runpod — Image RCIB pour RunPod (phases 2+).
+# Dockerfile.runpod — Image RCIB "production" pour RunPod.
 #
-# Étend l'image officielle CARLA 0.9.15 en ajoutant :
-#   - le package Python carla (le wheel DE l'image → correspondance garantie, piège n°1)
-#   - les dépendances Python du projet
-#   - le code RCIB (metrics harness, scenario bridge, etc.)
-#
-# Pour la Phase 0 (smoke test), pas besoin de builder ceci : on lance directement
-# l'image carlasim/carla:0.9.15 sur RunPod (voir RUNPOD_GUIDE.md). Ce Dockerfile
-# sert dès la Phase 2, quand on embarque notre propre code.
+# Résout DÉFINITIVEMENT les pièges rencontrés en Phase 0 (cf. runners/RUNPOD_GUIDE.md) :
+#   - installe les 3 libs système manquantes (libjpeg, libtiff, libjbig)
+#   - met l'egg carla py3.7 dans le PYTHONPATH
+#   - installe pip + nos dépendances
+#   - embarque le code RCIB
+# Résultat : un pod démarre prêt à l'emploi, sans le bricolage manuel sans-root.
 #
 # Build & push (depuis ta machine avec Docker) :
 #   docker build -f docker/Dockerfile.runpod -t TONUSER/rcib:0.1 .
 #   docker push TONUSER/rcib:0.1
+# Puis utiliser TONUSER/rcib:0.1 comme image du pod RunPod.
 
 FROM carlasim/carla:0.9.15
 
-# CARLA tourne sous l'utilisateur 'carla' ; on passe root pour installer.
+# Ici on EST root (pendant le build), donc apt fonctionne — contrairement au runtime.
 USER root
 
-# Python + pip (l'image CARLA a Python 3.7 mais pas toujours pip à jour)
+# Les 3 libs système que l'egg carla réclame, + pip + outils.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        libjpeg-turbo8 \
+        libtiff5 \
+        libjbig0 \
         python3-pip \
-        xdg-user-dirs \
+        git \
     && rm -rf /var/lib/apt/lists/*
 
-# Le wheel carla EST dans l'image → on l'installe (garantit version client==serveur).
-# Le nom exact du wheel peut varier ; on prend celui présent dans dist/.
-RUN python3 -m pip install --upgrade pip \
-    && WHEEL=$(ls /home/carla/PythonAPI/carla/dist/carla-0.9.15-*.whl | head -n1) \
-    && echo "Installation du wheel : $WHEEL" \
-    && python3 -m pip install "$WHEEL"
+# Dépendances Python du projet (légères)
+RUN python3 -m pip install --no-cache-dir numpy 2>/dev/null || true
 
-# Dépendances du projet RCIB (légères : le harness est en lib standard + un peu de numpy)
-COPY requirements.txt /tmp/requirements.txt
-RUN python3 -m pip install -r /tmp/requirements.txt
+# L'egg carla py3.7 fonctionne sous le Python 3.6 de l'image (validé en Phase 0).
+# On l'expose via PYTHONPATH pour que `import carla` marche partout.
+ENV PYTHONPATH=/home/carla/PythonAPI/carla/dist/carla-0.9.15-py3.7-linux-x86_64.egg
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
 
 # Code RCIB
 WORKDIR /rcib
@@ -41,8 +41,9 @@ COPY rcib/ /rcib/rcib/
 COPY runners/ /rcib/runners/
 COPY tests/ /rcib/tests/
 
-# Le serveur CARLA doit tourner sous 'carla', pas root.
+# CARLA doit tourner sous 'carla', pas root.
 USER carla
 
-# Par défaut : lance le serveur headless. Le client se lance séparément.
-CMD ["bash", "-c", "cd /home/carla && ./CarlaUE4.sh -RenderOffScreen -nosound -carla-rpc-port=2000"]
+# Par défaut : garder le conteneur vivant (on lance serveur + client à la main,
+# ou via launch_carla.sh). Ne PAS lancer CARLA ici (RunPod gère le cycle de vie).
+CMD ["bash", "-c", "sleep infinity"]
