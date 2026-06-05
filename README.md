@@ -33,7 +33,9 @@ RMSE 1.0 vs mAP 0.28 ne se comparent pas) en ramenant tout sur une échelle de c
 - [x] **Phase 2 — Scenario Bridge** : `scenario.py` (specs reproductibles), `kinematic_runner.py` (exécuteur pur Python testable sans GPU), `scenario_bridge.py` (exécuteur CARLA). 11 tests. La logique réactive est déjà validable à froid via le KinematicRunner.
 - [x] **Phase 3 — Ego Planner réactif (closed-loop)** : `ego_planner.py` combine intention prédite + risque cinématique (distance d'arrêt) pour décider la vitesse cible, avec anticipation douce + filet de sécurité (AEB). 10 tests. Validé à froid : passif 0/12 buts & 12/12 collisions (RCIB 0.20) vs réactif prudent 12/12 buts & 0/12 collisions (RCIB 0.88). RCIB classe aussi les politiques de conduite (prudent 0.88 > équilibré 0.58 > agressif 0.06).
 - [x] **Phase 4 — Intention Adapter** : interface stable + **frontière de processus** (`intention/remote.py`) pour brancher des modèles isolés (PIEPredict TF1/Py3.5, Trajectron++) via JSON stdin/stdout, sans contaminer le simulateur. Baselines enrichies (`heuristic`, `constant_velocity`). 10 tests. Leaderboard : RCIB classe les prédicteurs sur des métriques de **conduite** et révèle leurs profils (sûr-mais-ferme vs doux-mais-risqué). Guide : `docs/PLUGGING_A_MODEL.md`.
-- [ ] Phase 5 — Batch runner + leaderboard multi-modèles
+- [x] **Phase 5 — Batch runner + leaderboard** : `benchmark.py` croise N prédicteurs × M scénarios à seeds fixées, agrège les métriques **par modèle**, et produit un leaderboard classé, **reproductible** (classement identique entre runs) et sauvegardé en JSON commitable. CLI : `runners/run_benchmark.py` (cinématique ou `--carla`). 8 tests.
+
+**Statut : les 6 phases sont complètes — 48 tests, closed-loop de bout en bout, modèles SOTA pluggables, leaderboard reproductible.** Reste à valider le bridge CARLA sur pod et à brancher de vrais modèles (PIEPredict/Trajectron++).
 
 ## Architecture (clé : découplage du prédicteur)
 
@@ -84,7 +86,8 @@ tests/
 ├── test_metrics.py     # validation du harness (Phase 1)
 ├── test_scenario.py    # validation scénario + runner (Phase 2)
 ├── test_planner.py     # validation closed-loop réactif (Phase 3)
-└── test_intention.py   # validation prédicteurs + frontière de processus (Phase 4)
+├── test_intention.py   # validation prédicteurs + frontière de processus (Phase 4)
+└── test_benchmark.py   # validation batch runner + leaderboard (Phase 5)
 runners/                # smoke test CARLA + setup RunPod (Phase 0)
 docs/PLAN.md            # plan complet + pièges anticipés
 ```
