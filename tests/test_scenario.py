@@ -110,9 +110,12 @@ def test_crossing_passive_is_dangerous():
     assert collisions >= 8, f"le scénario devrait être dangereux, {collisions}/10 collisions"
 
 def test_runner_produces_valid_trace():
-    tr = run_kinematic(crossing_scenario(seed=0))
+    spec = crossing_scenario(seed=0)
+    tr = run_kinematic(spec)
     assert isinstance(tr, Trace)
-    assert len(tr) == crossing_scenario(seed=0).n_ticks
+    # Avec terminaison anticipée au but, la trace fait AU PLUS n_ticks frames
+    # (elle s'arrête dès que l'ego atteint son but), et au moins quelques frames.
+    assert 0 < len(tr) <= spec.n_ticks
     # round-trip JSON (sérialisation/désérialisation)
     d = tr.to_dict()
     tr2 = Trace.from_dict(d)

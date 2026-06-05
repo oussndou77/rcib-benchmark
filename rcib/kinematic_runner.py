@@ -117,6 +117,12 @@ def run_kinematic(spec: ScenarioSpec,
         # Avancer l'ego
         ego_x += ego_v * dt
 
+        # Terminaison anticipée : dès que l'ego atteint son but, on arrête (l'épisode
+        # est fini). Évite de simuler l'ego au-delà du but — important dans CARLA où
+        # rouler trop loin sort du couloir dégagé et percute un obstacle.
+        if ego_x >= spec.ego_goal_distance:
+            break
+
     return Trace(
         frames=frames,
         scenario_id=spec.scenario_id,

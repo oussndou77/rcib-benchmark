@@ -113,7 +113,7 @@ class ScenarioSpec:
 # ──────────────────────────────────────────────
 
 def crossing_scenario(seed: int = 0,
-                      ego_speed: float = 8.0,
+                      ego_speed: float = 6.0,
                       jitter: bool = True) -> ScenarioSpec:
     """
     Scénario canonique : UN piéton traverse perpendiculairement la trajectoire de
@@ -136,17 +136,17 @@ def crossing_scenario(seed: int = 0,
     """
     rng = random.Random(seed)
 
-    # Le piéton apparaît loin devant (immobile), à un point de croisement fixe.
-    # On déclenche tôt (trigger_distance grand) pour que le piéton parte de PLUS LOIN
-    # latéralement : ça donne au réactif une marge de freinage réaliste (validation
-    # CARLA : un latéral trop court — ~2.5 m — ne laissait pas le temps de réagir).
-    crossing_x = 45.0          # point de croisement longitudinal (m devant l'ego au départ)
-    trigger_distance = 25.0    # l'ego déclenche la traversée à 25 m du croisement
+    # Distances COURTES pour tenir dans le couloir dégagé de Town10HD (~43 m) :
+    # ce centre-ville dense fait qu'une trajectoire rectiligne percute un bâtiment
+    # au bout d'~43 m (validation CARLA). On garde toute l'épisode en deçà : croisement
+    # à ~18 m, vitesse 6 m/s (réaliste près des piétons), ego parcourt ~32 m en 6 s.
+    crossing_x = 18.0          # point de croisement longitudinal (m devant l'ego au départ)
+    trigger_distance = 12.0    # l'ego déclenche la traversée à 12 m du croisement
     ped_speed = 1.5            # vitesse de marche (m/s)
 
     if jitter:
-        crossing_x += rng.uniform(-4.0, 4.0)        # 41..49 m
-        trigger_distance += rng.uniform(-3.0, 3.0)  # 22..28 m
+        crossing_x += rng.uniform(-2.0, 2.0)        # 16..20 m
+        trigger_distance += rng.uniform(-1.5, 1.5)  # 10.5..13.5 m
         ped_speed += rng.uniform(-0.2, 0.3)         # 1.3..1.8 m/s
 
     # Distance latérale calibrée pour que le piéton soit dans la voie à l'arrivée.
@@ -167,21 +167,21 @@ def crossing_scenario(seed: int = 0,
         scenario_id=f"crossing_seed{seed}",
         seed=seed,
         ego_target_speed=ego_speed,
-        ego_goal_distance=crossing_x + 20.0,   # le but est au-delà du croisement
+        ego_goal_distance=crossing_x + 8.0,    # but juste au-delà du croisement (~26 m)
         pedestrians=[ped],
-        duration=14.0,
+        duration=9.0,                          # assez pour que le réactif (qui ralentit) atteigne le but ; passif ~40 m < couloir 43 m
         fixed_delta=0.05,
     )
 
 
-def no_pedestrian_scenario(seed: int = 0, ego_speed: float = 8.0) -> ScenarioSpec:
+def no_pedestrian_scenario(seed: int = 0, ego_speed: float = 6.0) -> ScenarioSpec:
     """Scénario de contrôle : route libre, aucun piéton. L'ego doit atteindre son but."""
     return ScenarioSpec(
         scenario_id=f"free_road_seed{seed}",
         seed=seed,
         ego_target_speed=ego_speed,
-        ego_goal_distance=60.0,
+        ego_goal_distance=28.0,                # court : tient dans le couloir dégagé (~43 m)
         pedestrians=[],
-        duration=12.0,
+        duration=6.0,
         fixed_delta=0.05,
     )

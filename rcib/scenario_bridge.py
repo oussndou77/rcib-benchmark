@@ -293,6 +293,12 @@ class CarlaScenarioBridge:
                 ))
 
                 self.world.tick()
+
+                # Terminaison anticipée : dès que l'ego atteint son but (en longitudinal),
+                # on arrête. Évite de rouler au-delà du but et de sortir du couloir
+                # dégagé (Town10HD percute un bâtiment au bout d'~43 m en ligne droite).
+                if ego_long >= spec.ego_goal_distance:
+                    break
         finally:
             self.cleanup()
 
