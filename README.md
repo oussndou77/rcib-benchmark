@@ -32,7 +32,7 @@ RMSE 1.0 vs mAP 0.28 ne se comparent pas) en ramenant tout sur une échelle de c
 - [x] **Phase 0 — smoke test CARLA sur RunPod** : VALIDÉ sur RTX 3090 (client 0.9.15 ↔ serveur 0.9.15, connexion RPC OK). Setup automatisé : `runners/setup_runpod.sh`. Voir `runners/RUNPOD_GUIDE.md`.
 - [x] **Phase 2 — Scenario Bridge** : `scenario.py` (specs reproductibles), `kinematic_runner.py` (exécuteur pur Python testable sans GPU), `scenario_bridge.py` (exécuteur CARLA). 11 tests. La logique réactive est déjà validable à froid via le KinematicRunner.
 - [x] **Phase 3 — Ego Planner réactif (closed-loop)** : `ego_planner.py` combine intention prédite + risque cinématique (distance d'arrêt) pour décider la vitesse cible, avec anticipation douce + filet de sécurité (AEB). 10 tests. Validé à froid : passif 0/12 buts & 12/12 collisions (RCIB 0.20) vs réactif prudent 12/12 buts & 0/12 collisions (RCIB 0.88). RCIB classe aussi les politiques de conduite (prudent 0.88 > équilibré 0.58 > agressif 0.06).
-- [ ] Phase 4 — Intention Adapter en service (PIEPredict / Trajectron++ isolés)
+- [x] **Phase 4 — Intention Adapter** : interface stable + **frontière de processus** (`intention/remote.py`) pour brancher des modèles isolés (PIEPredict TF1/Py3.5, Trajectron++) via JSON stdin/stdout, sans contaminer le simulateur. Baselines enrichies (`heuristic`, `constant_velocity`). 10 tests. Leaderboard : RCIB classe les prédicteurs sur des métriques de **conduite** et révèle leurs profils (sûr-mais-ferme vs doux-mais-risqué). Guide : `docs/PLUGGING_A_MODEL.md`.
 - [ ] Phase 5 — Batch runner + leaderboard multi-modèles
 
 ## Architecture (clé : découplage du prédicteur)
@@ -76,12 +76,15 @@ rcib/
 ├── ego_planner.py      # PHASE 3 : planner réactif (intention + risque -> vitesse cible)
 ├── intention/
 │   ├── base.py         # interface stable IntentionPredictor
-│   └── heuristic.py    # baseline V0 (pure Python)
+│   ├── heuristic.py    # baseline V0 (proximité + approche)
+│   ├── velocity.py     # baseline V0 (constant-velocity, anticipation)
+│   └── remote.py       # PHASE 4 : frontière de processus (modèle isolé via JSON)
 └── run_logger.py       # sauvegarde + leaderboard (reproductibilité)
 tests/
 ├── test_metrics.py     # validation du harness (Phase 1)
 ├── test_scenario.py    # validation scénario + runner (Phase 2)
-└── test_planner.py     # validation closed-loop réactif (Phase 3)
+├── test_planner.py     # validation closed-loop réactif (Phase 3)
+└── test_intention.py   # validation prédicteurs + frontière de processus (Phase 4)
 runners/                # smoke test CARLA + setup RunPod (Phase 0)
 docs/PLAN.md            # plan complet + pièges anticipés
 ```
