@@ -136,20 +136,23 @@ def crossing_scenario(seed: int = 0,
     """
     rng = random.Random(seed)
 
-    # Le piéton apparaît loin devant (immobile), à un point de croisement fixe
-    crossing_x = 40.0          # point de croisement longitudinal (m devant l'ego au départ)
-    trigger_distance = 15.0    # l'ego déclenche la traversée à 15 m du croisement
+    # Le piéton apparaît loin devant (immobile), à un point de croisement fixe.
+    # On déclenche tôt (trigger_distance grand) pour que le piéton parte de PLUS LOIN
+    # latéralement : ça donne au réactif une marge de freinage réaliste (validation
+    # CARLA : un latéral trop court — ~2.5 m — ne laissait pas le temps de réagir).
+    crossing_x = 45.0          # point de croisement longitudinal (m devant l'ego au départ)
+    trigger_distance = 25.0    # l'ego déclenche la traversée à 25 m du croisement
     ped_speed = 1.5            # vitesse de marche (m/s)
 
     if jitter:
-        crossing_x += rng.uniform(-4.0, 4.0)        # 36..44 m
-        trigger_distance += rng.uniform(-2.0, 2.0)  # 13..17 m
+        crossing_x += rng.uniform(-4.0, 4.0)        # 41..49 m
+        trigger_distance += rng.uniform(-3.0, 3.0)  # 22..28 m
         ped_speed += rng.uniform(-0.2, 0.3)         # 1.3..1.8 m/s
 
     # Distance latérale calibrée pour que le piéton soit dans la voie à l'arrivée.
-    # Facteur 0.85 : le piéton atteint y=0 un peu avant l'ego -> collision franche
+    # Facteur 0.9 : le piéton atteint y=0 un peu avant l'ego -> collision franche
     # pour le passif (le piéton est en plein milieu de la voie au passage).
-    lateral_start = 0.85 * ped_speed * trigger_distance / ego_speed
+    lateral_start = 0.9 * ped_speed * trigger_distance / ego_speed
 
     ped = PedestrianSpec(
         ped_id="walker_01",

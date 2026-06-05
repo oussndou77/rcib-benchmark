@@ -137,6 +137,12 @@ class CarlaScenarioBridge:
         Spawn les piétons en transposant leurs coordonnées relatives dans le monde,
         selon la position et le yaw de l'ego.
         Retourne la liste des acteurs walkers (dans l'ordre de spec.pedestrians).
+
+        Robustesse (cf. validation CARLA) : CARLA refuse un spawn qui chevauche la
+        géométrie du sol. Un walker à z+0.5 échoue souvent ; il faut spawner plus haut
+        et le laisser se poser. On essaie donc une ESCALADE de hauteurs, on vérifie que
+        le piéton est bien vivant, et on lève une erreur claire si aucun ne peut être
+        placé (plutôt que de continuer en silence avec un scénario vide).
         """
         carla = self.carla
         bp_lib = self.world.get_blueprint_library()
@@ -146,20 +152,45 @@ class CarlaScenarioBridge:
         ego_yaw = ego_transform.rotation.yaw
         walkers = []
 
+        # Hauteurs à essayer (la validation a montré que z+0.5/+1.0 échouent, +1.5 marche)
+        z_offsets = [1.0, 1.5, 2.0, 0.5, 2.5]
+
         for i, ps in enumerate(spec.pedestrians):
             # Position monde = position ego + rotation(yaw) * offset relatif
             wx, wy = _rotate(ps.start_x, ps.start_y, ego_yaw)
-            spawn_loc = carla.Location(x=ego_loc.x + wx, y=ego_loc.y + wy,
-                                       z=ego_loc.z + 0.5)  # léger offset pour éviter le sol
-            spawn_tf = carla.Transform(spawn_loc)
             walker_bp = walker_bps[i % len(walker_bps)]
             # Rendre le piéton non-invincible : garantit une collision physique détectable
             if walker_bp.has_attribute("is_invincible"):
                 walker_bp.set_attribute("is_invincible", "false")
-            walker = self.world.try_spawn_actor(walker_bp, spawn_tf)
-            walkers.append(walker)  # peut être None si échec (on gère plus bas)
-            if walker:
-                self.actors.append(walker)
+
+            walker = None
+            for z in z_offsets:
+                spawn_loc = carla.Location(x=ego_loc.x + wx, y=ego_loc.y + wy,
+                                           z=ego_loc.z + z)
+                walker = self.world.try_spawn_actor(walker_bp, carla.Transform(spawn_loc))
+                if walker is not None:
+                    # Laisser le piéton se poser puis vérifier qu'il est vivant
+                    self.world.tick()
+                    if walker.is_alive:
+                        print(f"    [bridge] {ps.ped_id} spawné à z+{z:.1f} "
+                              f"(monde x={spawn_loc.x:.1f} y={spawn_loc.y:.1f})")
+                        break
+                    else:
+                        try:
+                            walker.destroy()
+                        except Exception:
+                            pass
+                        walker = None
+
+            if walker is None:
+                raise RuntimeError(
+                    f"Impossible de spawn le piéton {ps.ped_id} à la position "
+                    f"(x={ego_loc.x + wx:.1f}, y={ego_loc.y + wy:.1f}) après {len(z_offsets)} "
+                    f"essais de hauteur. Position probablement hors zone navigable — "
+                    f"essaie un autre point de spawn ego ou ajuste la géométrie du scénario.")
+
+            walkers.append(walker)
+            self.actors.append(walker)
 
         # Quelques ticks pour stabiliser les spawns
         for _ in range(2):
@@ -182,6 +213,15 @@ class CarlaScenarioBridge:
         vehicle, ego_tf = self.spawn_ego(spec)
         self.attach_collision_sensor(vehicle)
         walkers = self.spawn_pedestrians(spec, ego_tf)
+
+        # Laisser les piétons se poser au sol (ils sont spawnés en hauteur puis tombent).
+        # Sans ça, leur position initiale serait encore en train de descendre.
+        for _ in range(10):
+            for ps, walker in zip(spec.pedestrians, walkers):
+                if walker is not None:
+                    # vitesse nulle pendant la stabilisation
+                    walker.apply_control(carla.WalkerControl(speed=0.0))
+            self.world.tick()
 
         # Repère du scénario : origine = spawn de l'ego, axe +x = direction (yaw) de l'ego.
         ego_yaw = ego_tf.rotation.yaw
