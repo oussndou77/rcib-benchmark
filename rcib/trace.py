@@ -73,12 +73,19 @@ class Trace:
         return self.frames[-1].t - self.frames[0].t
 
     def reached_goal(self) -> bool:
-        """L'ego a-t-il atteint sa destination ?"""
+        """
+        L'ego a-t-il atteint sa destination ?
+        Vrai s'il est passé à moins de `goal_radius` du but à N'IMPORTE QUEL instant
+        (pas seulement à la fin) : une fois le but franchi, il reste atteint même si
+        l'ego continue de rouler au-delà.
+        """
         if self.ego_goal is None or not self.frames:
             return False
         gx, gy = self.ego_goal
-        last = self.frames[-1].ego
-        return math.hypot(last.x - gx, last.y - gy) <= self.goal_radius
+        for f in self.frames:
+            if math.hypot(f.ego.x - gx, f.ego.y - gy) <= self.goal_radius:
+                return True
+        return False
 
     def to_dict(self) -> dict:
         """Sérialisation JSON-compatible (pour le Run Logger)."""

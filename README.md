@@ -30,7 +30,7 @@ RMSE 1.0 vs mAP 0.28 ne se comparent pas) en ramenant tout sur une échelle de c
 
 - [x] **Phase 1 — Metrics Harness** : cœur scientifique, pur Python, testé. Tourne sans GPU.
 - [x] **Phase 0 — smoke test CARLA sur RunPod** : VALIDÉ sur RTX 3090 (client 0.9.15 ↔ serveur 0.9.15, connexion RPC OK). Setup automatisé : `runners/setup_runpod.sh`. Voir `runners/RUNPOD_GUIDE.md`.
-- [ ] Phase 2 — Scenario Bridge (spawn piétons + ego dans CARLA)
+- [x] **Phase 2 — Scenario Bridge** : `scenario.py` (specs reproductibles), `kinematic_runner.py` (exécuteur pur Python testable sans GPU), `scenario_bridge.py` (exécuteur CARLA). 11 tests. La logique réactive est déjà validable à froid via le KinematicRunner.
 - [ ] Phase 3 — Ego Planner réactif + boucle closed-loop
 - [ ] Phase 4 — Intention Adapter en service (PIEPredict / Trajectron++ isolés)
 - [ ] Phase 5 — Batch runner + leaderboard multi-modèles
@@ -69,10 +69,17 @@ métriques de conduite — pas de prédiction.
 rcib/
 ├── trace.py            # modèle de données d'une run (contrat bridge↔harness)
 ├── metrics.py          # le Metrics Harness (TTC, collision, confort, score RCIB)
+├── scenario.py         # définition reproductible d'un scénario (pur Python)
+├── kinematic_runner.py # exécuteur cinématique pur Python (testable sans GPU)
+├── scenario_bridge.py  # exécuteur CARLA réel (sur pod)
+├── ego_controller.py   # cruise control de l'ego (base du planner Phase 3)
 ├── intention/
 │   ├── base.py         # interface stable IntentionPredictor
 │   └── heuristic.py    # baseline V0 (pure Python)
 └── run_logger.py       # sauvegarde + leaderboard (reproductibilité)
-tests/test_metrics.py   # validation hors-GPU
+tests/
+├── test_metrics.py     # validation du harness (Phase 1)
+└── test_scenario.py    # validation scénario + runner (Phase 2)
+runners/                # smoke test CARLA + setup RunPod (Phase 0)
 docs/PLAN.md            # plan complet + pièges anticipés
 ```
