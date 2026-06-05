@@ -46,11 +46,30 @@ def test_pedestrian_stationary_before_start():
     px, py = p.position_at(4.0)   # 1s de marche à 2 m/s vers +y
     assert abs(px - 10) < 1e-6 and abs(py - 7) < 1e-6
 
-def test_pedestrian_direction_normalized():
-    p = PedestrianSpec("p", 0, 0, walk_direction=(3, 4), speed=5.0)  # |(3,4)|=5
-    vx, vy = p.velocity_at(1.0)
-    # direction normalisée (0.6, 0.8) * vitesse 5 = (3, 4)
-    assert abs(vx - 3) < 1e-6 and abs(vy - 4) < 1e-6
+def test_pedestrian_position_trigger():
+    """Le déclenchement par position : le piéton part quand l'ego s'approche du croisement."""
+    p = PedestrianSpec("p", start_x=40, start_y=-3, walk_direction=(0, 1),
+                       speed=1.5, trigger_distance=15.0)
+    # ego loin (à 0) : le croisement est à 40, gap=40 > 15 -> pas encore
+    assert not p.should_start(t=5.0, ego_longitudinal=0.0)
+    # ego à 30 : gap = 40-30 = 10 <= 15 -> démarre
+    assert p.should_start(t=5.0, ego_longitudinal=30.0)
+    # ego a dépassé le croisement (à 45) : gap négatif -> ne démarre pas (déjà passé)
+    assert not p.should_start(t=5.0, ego_longitudinal=45.0)
+
+def test_crossing_uses_position_trigger():
+    """Le scénario de croisement par défaut utilise le déclenchement par position."""
+    spec = crossing_scenario(seed=0)
+    assert spec.pedestrians[0].trigger_distance is not None, \
+        "le scénario de croisement doit déclencher par position (robuste à l'accélération)"
+
+
+def test_time_trigger_still_works():
+    """Le mode temps (start_time) reste fonctionnel pour la rétrocompatibilité."""
+    p = PedestrianSpec("p", start_x=10, start_y=0, walk_direction=(0, 1),
+                       speed=1.0, start_time=3.0)  # pas de trigger_distance
+    assert not p.should_start(t=1.0, ego_longitudinal=999)
+    assert p.should_start(t=3.5, ego_longitudinal=0)
 
 
 # ── CruiseController ──

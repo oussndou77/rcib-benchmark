@@ -183,8 +183,19 @@ class CarlaScenarioBridge:
         self.attach_collision_sensor(vehicle)
         walkers = self.spawn_pedestrians(spec, ego_tf)
 
-        # Yaw de l'ego (pour transposer les directions de marche des piétons)
+        # Repère du scénario : origine = spawn de l'ego, axe +x = direction (yaw) de l'ego.
         ego_yaw = ego_tf.rotation.yaw
+        ego0_x, ego0_y = ego_tf.location.x, ego_tf.location.y
+        import math as _m
+        yaw_rad = _m.radians(ego_yaw)
+        hx, hy = _m.cos(yaw_rad), _m.sin(yaw_rad)   # vecteur heading de l'ego (monde)
+
+        def ego_longitudinal(loc):
+            """Distance parcourue par l'ego le long de son heading, depuis le spawn."""
+            return (loc.x - ego0_x) * hx + (loc.y - ego0_y) * hy
+
+        # État de marche des piétons (déclenchement par position ou temps, comme le KinematicRunner)
+        walking = [False] * len(spec.pedestrians)
 
         frames = []
         dt = spec.fixed_delta
@@ -193,15 +204,22 @@ class CarlaScenarioBridge:
             for i in range(spec.n_ticks):
                 t = i * dt
 
+                # Position longitudinale de l'ego dans le repère du scénario
+                ego_loc = vehicle.get_location()
+                ego_long = ego_longitudinal(ego_loc)
+
                 # ── Contrôler les piétons (WalkerControl manuel) ──
                 ped_states = []
-                for ps, walker in zip(spec.pedestrians, walkers):
+                for idx, (ps, walker) in enumerate(zip(spec.pedestrians, walkers)):
                     if walker is None:
                         continue
+                    # Déclenchement identique au KinematicRunner (temps OU position)
+                    if not walking[idx] and ps.should_start(t, ego_longitudinal=ego_long):
+                        walking[idx] = True
+                    speed = ps.speed if walking[idx] else 0.0
                     # Direction de marche transposée dans le repère monde
                     ddx, ddy = ps.normalized_direction()
                     wdx, wdy = _rotate(ddx, ddy, ego_yaw)
-                    speed = ps.speed if t >= ps.start_time else 0.0
                     control = carla.WalkerControl()
                     control.direction = carla.Vector3D(x=wdx, y=wdy, z=0.0)
                     control.speed = speed
@@ -213,10 +231,9 @@ class CarlaScenarioBridge:
                         id=ps.ped_id, x=loc.x, y=loc.y, vx=vel.x, vy=vel.y))
 
                 # ── État de l'ego ──
-                loc = vehicle.get_location()
                 vel = vehicle.get_velocity()
                 ego_speed = math.hypot(vel.x, vel.y)
-                ego_state = AgentState(id="ego", x=loc.x, y=loc.y, vx=vel.x, vy=vel.y)
+                ego_state = AgentState(id="ego", x=ego_loc.x, y=ego_loc.y, vx=vel.x, vy=vel.y)
 
                 # ── (Phase 3) planner module la vitesse cible ──
                 if planner is not None:

@@ -61,18 +61,32 @@ def run_kinematic(spec: ScenarioSpec,
     ego_x, ego_y = 0.0, 0.0
     ego_v = 0.0    # vitesse scalaire (m/s), dirigée selon +x
 
+    # État des piétons (incrémental, pour gérer le déclenchement par position) :
+    # position courante, et drapeau "en train de marcher".
+    ped_state = []
+    for ps in spec.pedestrians:
+        ped_state.append({"x": ps.start_x, "y": ps.start_y, "walking": False, "spec": ps})
+
     collided = False
     collided_with = None
 
     for i in range(spec.n_ticks):
         t = i * dt
 
-        # Positions/vitesses des piétons à cet instant (analytique)
+        # Mettre à jour piétons : déclenchement (temps ou position) puis déplacement
         peds = []
-        for ps in spec.pedestrians:
-            px, py = ps.position_at(t)
-            pvx, pvy = ps.velocity_at(t)
-            peds.append(AgentState(id=ps.ped_id, x=px, y=py, vx=pvx, vy=pvy))
+        for st in ped_state:
+            ps = st["spec"]
+            if not st["walking"] and ps.should_start(t, ego_longitudinal=ego_x):
+                st["walking"] = True
+            if st["walking"]:
+                ddx, ddy = ps.normalized_direction()
+                st["x"] += ddx * ps.speed * dt
+                st["y"] += ddy * ps.speed * dt
+                vx, vy = ddx * ps.speed, ddy * ps.speed
+            else:
+                vx, vy = 0.0, 0.0
+            peds.append(AgentState(id=ps.ped_id, x=st["x"], y=st["y"], vx=vx, vy=vy))
 
         # État courant de l'ego
         ego_state = AgentState(id="ego", x=ego_x, y=ego_y, vx=ego_v, vy=0.0)

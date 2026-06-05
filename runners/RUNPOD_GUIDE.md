@@ -44,9 +44,12 @@ L'image tourne en utilisateur `carla` SANS root, Python 3.6, et il manque 3 libs
 système. On ne peut pas `apt install`, mais on peut télécharger les .deb et les
 extraire localement. Le script automatise tout :
 ```bash
-git clone https://github.com/oussndou77/rcib-benchmark.git
-cd rcib-benchmark/runners
-bash setup_runpod.sh
+# git n'est pas dans l'image -> télécharger l'archive du repo
+cd ~
+python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/oussndou77/rcib-benchmark/archive/refs/heads/main.tar.gz','rcib.tar.gz')"
+tar xzf rcib.tar.gz          # crée rcib-benchmark-main/
+cd rcib-benchmark-main/runners
+bash setup_runpod.sh          # installe libs + egg + dataclasses, écrit ~/rcib_env.sh
 source ~/rcib_env.sh
 ```
 Le script télécharge `libjpeg-turbo8`, `libtiff5`, `libjbig0`, les extrait dans
@@ -82,6 +85,8 @@ Dès que le smoke test passe → **Stop** le pod (le compteur tourne).
 | `UnicodeEncodeError surrogates` | encodage SSH/Windows | `export LC_ALL=C.UTF-8` |
 | serveur `-RenderOffScreen` "meurt" | en fait LENT à démarrer (pas mort) | attendre 90s ; vérifier `ps aux \| grep Shipping` |
 | `bind: Address already in use` | deux serveurs sur le port 2000 | `pkill -9 -f CarlaUE4` avant de relancer |
+| `git: command not found` | image minimale sans git | télécharger le repo en archive : `python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/USER/REPO/archive/refs/heads/main.tar.gz','r.tar.gz')"` puis `tar xzf` |
+| `No module named 'dataclasses'` | Python 3.6 (dataclasses = stdlib 3.7+) | `setup_runpod.sh` récupère le backport automatiquement (un fichier pur Python) |
 
 ## La vraie solution durable (à faire à froid)
 

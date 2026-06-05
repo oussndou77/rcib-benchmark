@@ -69,13 +69,29 @@ else
     echo "    ✓ egg carla : $EGG"
 fi
 
+# ── 4b. Backport 'dataclasses' pour Python 3.6 ──
+# L'image tourne en Python 3.6 ; le module 'dataclasses' (stdlib à partir de 3.7)
+# est absent. Le code RCIB l'utilise partout. On récupère le backport officiel
+# (un seul fichier pur Python, par l'auteur des dataclasses CPython). Sans pip.
+PYLIB="$HOME/pylibs"
+mkdir -p "$PYLIB"
+PYVER=$(python3 -c "import sys; print('%d.%d' % sys.version_info[:2])")
+if python3 -c "import dataclasses" 2>/dev/null; then
+    echo "    ✓ dataclasses déjà présent (Python $PYVER)"
+else
+    echo "    dataclasses absent (Python $PYVER) : récupération du backport..."
+    python3 -c "import urllib.request; urllib.request.urlretrieve('https://raw.githubusercontent.com/ericvsmith/dataclasses/master/dataclasses.py', '$PYLIB/dataclasses.py')" \
+        && echo "    ✓ dataclasses backport installé dans $PYLIB" \
+        || { echo "    ✗ échec du téléchargement de dataclasses"; ALL_OK=0; }
+fi
+
 # ── 5. Générer le fichier d'environnement à sourcer ──
 ENVFILE="$HOME/rcib_env.sh"
 cat > "$ENVFILE" << EOF
 # Variables d'environnement RCIB (généré par setup_runpod.sh)
 # À sourcer dans chaque shell : source ~/rcib_env.sh
 export LD_LIBRARY_PATH=$LIBDIR/usr/lib/x86_64-linux-gnu:\$LD_LIBRARY_PATH
-export PYTHONPATH=$EGG
+export PYTHONPATH=$EGG:$PYLIB:\$PYTHONPATH
 export LC_ALL=C.UTF-8
 export LANG=C.UTF-8
 EOF
