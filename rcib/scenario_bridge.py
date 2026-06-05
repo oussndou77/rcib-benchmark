@@ -88,8 +88,14 @@ class CarlaScenarioBridge:
         """Spawn l'ego à un point de spawn de la carte. Retourne (vehicle, transform)."""
         carla = self.carla
         bp_lib = self.world.get_blueprint_library()
-        # Un modèle de véhicule simple et léger
-        vehicle_bp = bp_lib.filter("vehicle.*")[0]
+        # Un modèle de voiture précis et déterministe (pas un vélo/moto au hasard).
+        # Fallback sur vehicle.* si le modèle n'existe pas dans cette version.
+        try:
+            vehicle_bp = bp_lib.find("vehicle.tesla.model3")
+        except (IndexError, RuntimeError):
+            cars = [b for b in bp_lib.filter("vehicle.*")
+                    if int(b.get_attribute("number_of_wheels")) == 4]
+            vehicle_bp = cars[0] if cars else bp_lib.filter("vehicle.*")[0]
 
         spawn_points = self.world.get_map().get_spawn_points()
         if not spawn_points:
@@ -144,9 +150,12 @@ class CarlaScenarioBridge:
             # Position monde = position ego + rotation(yaw) * offset relatif
             wx, wy = _rotate(ps.start_x, ps.start_y, ego_yaw)
             spawn_loc = carla.Location(x=ego_loc.x + wx, y=ego_loc.y + wy,
-                                       z=ego_loc.z + 1.0)  # +1m pour éviter le sol
+                                       z=ego_loc.z + 0.5)  # léger offset pour éviter le sol
             spawn_tf = carla.Transform(spawn_loc)
             walker_bp = walker_bps[i % len(walker_bps)]
+            # Rendre le piéton non-invincible : garantit une collision physique détectable
+            if walker_bp.has_attribute("is_invincible"):
+                walker_bp.set_attribute("is_invincible", "false")
             walker = self.world.try_spawn_actor(walker_bp, spawn_tf)
             walkers.append(walker)  # peut être None si échec (on gère plus bas)
             if walker:
